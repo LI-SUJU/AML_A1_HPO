@@ -21,7 +21,7 @@ def configuration_preprocess_before_model_training(configurations):
     
     return preprocessor
 
-# Get default values for missing hyperparameters and update theta
+# Every time when sampling configurations, it is reccomended to call this function
 def configuration_preprocess_before_sampling(config_space, theta):
     theta.update({key: config_space.get_hyperparameter(key).default_value 
                   for key in config_space if key not in theta})

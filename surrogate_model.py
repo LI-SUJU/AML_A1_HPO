@@ -16,10 +16,31 @@ class SurrogateModel:
         self.config_space = config_space
         self.df = None
         self.model = None
-        self.spearman = None
+        # self.spearman = None
 
-    def get_spearman(self):
-        return self.spearman
+    def get_spearman_correlation(self):
+        # get the spearman correlation of self.model
+        if self.model is None:
+            raise ValueError("The model has not been trained yet. Please call the fit method first.")
+
+        # Assuming self.df is the dataframe used for training
+        X = self.df.iloc[:, :-1]
+        y = self.df.iloc[:, -1]
+
+        # Split the data in the same way as during training
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        # Predict the test set
+        y_pred = self.model.predict(X_test)
+        # print('y_pred: {}'.format(y_pred))
+        # print('y_test: {}'.format(y_test))
+        # Calculate Spearman correlation
+        spearman_corr, pvalue = spearmanr(y_test, y_pred)
+        print('Spearman correlation: {}, p-value: {}'.format(spearman_corr, pvalue))
+
+        return spearman_corr, pvalue
+
+        
 
     def fit(self, df):
         """
@@ -29,7 +50,7 @@ class SurrogateModel:
         :param df: the dataframe with performances
         :return: Does not return anything, but stores the trained model in self.model
         """
-        df = df
+        self.df = df
         X = df.iloc[:, :-1]
         y = df.iloc[:, -1]
 
@@ -56,8 +77,8 @@ class SurrogateModel:
         print(f'Mean Squared Error: {mean_squared_error(y_test, y_pred)}')
         print(f'R^2 Score: {r2_score(y_test, y_pred)}')
 
-        self.spearman, pvalue = spearmanr(y_test, y_pred)
-        print('Spearmans correlation:{}, p-value: {}'.format(self.spearman, pvalue))
+        # self.spearman, pvalue = spearmanr(y_test, y_pred)
+        # print('Spearmans correlation:{}, p-value: {}'.format(self.spearman, pvalue))
         # raise NotImplementedError()
 
     def predict(self, theta_new):

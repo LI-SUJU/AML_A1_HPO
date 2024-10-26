@@ -91,6 +91,9 @@ def eval_smbo(args, max_anchor, total_budget):
     
     budget_left = total_budget
 
+    spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external = [], [], [], []
+    # spearman_corr_internal[0], pvalue_internal[0] = smbo.get_spearman_correlation(df)
+    # spearman_corr_external[0], pvalue_external[0] = surrogate_model.get_spearman_correlation()
 
     while budget_left:
         smbo.fit_model()
@@ -98,14 +101,18 @@ def eval_smbo(args, max_anchor, total_budget):
         performance = surrogate_model.predict(theta_new)
         smbo.update_runs((theta_new , performance))
         # smbo.all_performances.append(performance)
-        
+        spearman_corr_internal.append(smbo.get_spearman_correlation(df)[0])
+        pvalue_internal.append(smbo.get_spearman_correlation(df)[1])
+        spearman_corr_external.append(surrogate_model.get_spearman_correlation()[0])
+        pvalue_external.append(surrogate_model.get_spearman_correlation()[1])
+
         budget_left = budget_left-1
     
         
-    return smbo.result_performance
+    return smbo.result_performance, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external
     
 
-def plot_value(total_budget, all_performances):
+def plot_value(total_budget, all_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external):
     
     plt.figure(figsize=(6, 6))
     plt.plot(range(total_budget), all_performances, color='blue', label='Iterative Best Performances so far')
@@ -137,12 +144,41 @@ def plot_value(total_budget, all_performances):
     plt.legend()
     
     plt.tight_layout()
-    plt.show()
+    # plt.show()
+    plt.savefig('smbo_performance.png')
+
+    # Plot the Spearman correlation and p-value
+    plt.figure(figsize=(12, 12))
+    
+    # Plot Spearman correlation for internal and external models
+    plt.subplot(2, 1, 1)
+    plt.plot(range(total_budget), spearman_corr_internal, color='blue', label='Internal Model Spearman Correlation')
+    plt.plot(range(total_budget), spearman_corr_external, color='green', label='External Model Spearman Correlation')
+    plt.xlabel('Budget')
+    plt.ylabel('Spearman Correlation')
+    plt.title('Spearman Correlation')
+    plt.grid(True)
+    plt.legend()
+    
+    # Plot p-value for internal and external models
+    plt.subplot(2, 1, 2)
+    plt.plot(range(total_budget), pvalue_internal, color='blue', label='Internal Model p-value')
+    plt.plot(range(total_budget), pvalue_external, color='green', label='External Model p-value')
+    plt.xlabel('Budget')
+    plt.ylabel('p-value')
+    plt.title('p-value')
+    plt.grid(True)
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.savefig('spearman_pvalue.png')
+
+
     
 if __name__ == "__main__":
     args = parse_args()
     max_anchor = 16000
     total_budget = 200
-    result_performances = eval_smbo(args, max_anchor=max_anchor, total_budget=total_budget)
-    plot_value(total_budget, result_performances)
+    result_performances,  spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external= eval_smbo(args, max_anchor=max_anchor, total_budget=total_budget)
+    plot_value(total_budget, result_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external)
     
