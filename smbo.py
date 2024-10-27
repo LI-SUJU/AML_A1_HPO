@@ -50,9 +50,11 @@ class SequentialModelBasedOptimization(object):
         configurations = [config for config, _ in self.R]
         X = pd.DataFrame(configurations)
         X= X.iloc[::]
+        # X = X.iloc[:, :-1]
         # imputer = SimpleImputer(strategy='mean')  # You can also use 'median' or 'most_frequent'
         # X = imputer.fit_transform(X)
         y = np.array([performance for _, performance in self.R])
+        # y = y.iloc[:, -1]
 
         preprocessor = configuration_preprocess_before_model_training(configurations)
         kernel = C(1.0, (1e-4, 1e1)) * Matern(length_scale=1.0, length_scale_bounds=(1e-4, 1e1), nu=2.5)
@@ -103,6 +105,7 @@ class SequentialModelBasedOptimization(object):
         sigma = np.maximum(sigma, 1e-9)  # Avoid division by zero
         z = (f_star - mu) / sigma
         ei = (f_star - mu) * norm.cdf(z) + sigma * norm.pdf(z)
+        print('Expected Improvement:', ei)
         return ei
 
     def update_runs(self, run: typing.Tuple[typing.Dict, float]):
@@ -129,33 +132,45 @@ class SequentialModelBasedOptimization(object):
             # print('internal model df: {}'.format(df))
 
         # Assuming self.df is the dataframe used for training
+        configs = self.config_space.sample_configuration(size=len(df))
+        configs = [configuration_preprocess_before_sampling(self.config_space, config.get_dictionary()) for config in configs]
+        configs_df = pd.DataFrame(configs)
         X = df.iloc[:, :-1]
+        X = configuration_preprocess_before_sampling(self.config_space, X)
+        X = pd.DataFrame(X)
         y = df.iloc[:, -1]
 
         # Split the data in the same way as during training
-        _, X_test, _, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        _, X_test, _, y_test = train_test_split(configs_df, y, test_size=0.2, random_state=42)
         # print('internal model X_test: {}'.format(X_test))
         
         # Predict the test set
         # Ensure the same preprocessing is applied to the test data
         # Ensure the model is trained
-        if self.internal_surrogate_model is None:
-            raise ValueError("The model has not been trained yet. Please call the fit_model method first.")
+        # if self.internal_surrogate_model is None:
+        #     raise ValueError("The model has not been trained yet. Please call the fit_model method first.")
         
-        # Ensure the preprocessing is correctly applied
-        preprocessor = self.internal_surrogate_model.named_steps['preprocessor']
-        X_test_preprocessed = preprocessor.transform(X_test)
-        print("X_test_preprocessed:", X_test_preprocessed)
+        # # Ensure the preprocessing is correctly applied
+        # preprocessor = self.internal_surrogate_model.named_steps['preprocessor']
+        # X_test_preprocessed = preprocessor.transform(X_test)
+        # print("X_test_preprocessed:", X_test_preprocessed)
 
-        # Ensure the regressor is correctly predicting
-        regressor = self.internal_surrogate_model.named_steps['regressor']
-        y_pred = regressor.predict(X_test_preprocessed)
-        print('y_pred', y_pred)
+        # # Ensure the regressor is correctly predicting
+        # regressor = self.internal_surrogate_model.named_steps['regressor']
+        # y_pred = regressor.predict(X_test_preprocessed)
+        # print('y_pred', y_pred)
+        mu, sigma = self.internal_surrogate_model.predict(X_test, return_std=True)
+        print('internal model mu: {}'.format(mu))
+        print('internal model sigma: {}'.format(sigma))
+        sigma = np.maximum(sigma, 1e-9)  # Avoid division by zero
+        z = (self.theta_inc_performance - mu) / sigma
+        ei = (self.theta_inc_performance - mu) * norm.cdf(z) + sigma * norm.pdf(z)
+        y_pred = ei
         
         # Check if y_pred is still all zeros
         if np.all(y_pred == 0):
             raise ValueError("The prediction resulted in all zeros. Please check the training data and model.")
-        print('internal model y_pred: {}'.format(y_pred))
+        # print('internal model y_pred: {}'.format(y_pred))
 
         # Calculate Spearman correlation
         # print('internal model y_test: {}'.format(y_test))
