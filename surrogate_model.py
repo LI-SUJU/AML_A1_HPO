@@ -16,7 +16,6 @@ class SurrogateModel:
         self.config_space = config_space
         self.df = None
         self.model = None
-        # self.spearman = None
 
     def get_spearman_correlation(self):
         # get the spearman correlation of self.model
@@ -63,12 +62,7 @@ class SurrogateModel:
             ('regressor', RandomForestRegressor(n_estimators=100, random_state=42))
         ])
 
-        # # Ensure all categorical features are encoded
-        # X_train = pd.get_dummies(X_train)
-        # X_test = pd.get_dummies(X_test)
 
-        # # Align the train and test sets to ensure they have the same columns
-        # X_train, X_test = X_train.align(X_test, join='left', axis=1, fill_value=0)
 
         model.fit(X_train, y_train)
         self.model = model
@@ -77,9 +71,6 @@ class SurrogateModel:
         print(f'Mean Squared Error: {mean_squared_error(y_test, y_pred)}')
         print(f'R^2 Score: {r2_score(y_test, y_pred)}')
 
-        # self.spearman, pvalue = spearmanr(y_test, y_pred)
-        # print('Spearmans correlation:{}, p-value: {}'.format(self.spearman, pvalue))
-        # raise NotImplementedError()
 
     def predict(self, theta_new):
         """

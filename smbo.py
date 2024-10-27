@@ -1,7 +1,6 @@
 import ConfigSpace
 import numpy as np
 import typing
-
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.isotonic import spearmanr
@@ -10,7 +9,6 @@ from sklearn.pipeline import Pipeline
 from configuration_preprocess import configuration_preprocess_before_model_training, configuration_preprocess_before_sampling
 from sklearn.gaussian_process.kernels import Matern, ConstantKernel as C
 from scipy.stats import norm
-from sklearn.impute import SimpleImputer
 
 
 class SequentialModelBasedOptimization(object):
@@ -27,9 +25,7 @@ class SequentialModelBasedOptimization(object):
         self.theta_inc_performance = None
         self.internal_surrogate_model = None
         self.result_performance = []
-        # self.random_search = RandomSearch(self.config_space)
         self.max_anchor = max_anchor
-        # self.all_performances = []
 
     def initialize(self, capital_phi: typing.List[typing.Tuple[typing.Dict, float]]) -> None:
         """
@@ -142,23 +138,7 @@ class SequentialModelBasedOptimization(object):
 
         # Split the data in the same way as during training
         _, X_test, _, y_test = train_test_split(configs_df, y, test_size=0.2, random_state=42)
-        # print('internal model X_test: {}'.format(X_test))
-        
-        # Predict the test set
-        # Ensure the same preprocessing is applied to the test data
-        # Ensure the model is trained
-        # if self.internal_surrogate_model is None:
-        #     raise ValueError("The model has not been trained yet. Please call the fit_model method first.")
-        
-        # # Ensure the preprocessing is correctly applied
-        # preprocessor = self.internal_surrogate_model.named_steps['preprocessor']
-        # X_test_preprocessed = preprocessor.transform(X_test)
-        # print("X_test_preprocessed:", X_test_preprocessed)
 
-        # # Ensure the regressor is correctly predicting
-        # regressor = self.internal_surrogate_model.named_steps['regressor']
-        # y_pred = regressor.predict(X_test_preprocessed)
-        # print('y_pred', y_pred)
         mu, sigma = self.internal_surrogate_model.predict(X_test, return_std=True)
         print('internal model mu: {}'.format(mu))
         print('internal model sigma: {}'.format(sigma))
@@ -170,15 +150,7 @@ class SequentialModelBasedOptimization(object):
         # Check if y_pred is still all zeros
         if np.all(y_pred == 0):
             raise ValueError("The prediction resulted in all zeros. Please check the training data and model.")
-        # print('internal model y_pred: {}'.format(y_pred))
-
-        # Calculate Spearman correlation
-        # print('internal model y_test: {}'.format(y_test))
-        # print('internal model y_pred: {}'.format(y_pred))
-        # if np.all(y_test == y_test[0]) or np.all(y_pred == y_pred[0]):
-        #     print('Warning: Constant input array; the correlation coefficient is not defined.')
-        #     spearman_corr, pvalue = np.nan, np.nan
-        # else:
+        
         spearman_corr, pvalue = spearmanr(y_test, y_pred)
         print('internal Spearman correlation: {}, p-value: {}'.format(spearman_corr, pvalue))
 

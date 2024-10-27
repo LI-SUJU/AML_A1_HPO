@@ -1,8 +1,5 @@
 import pandas as pd
-import random
-from ConfigSpace import ConfigurationSpace, read_and_write
-from smbo import SequentialModelBasedOptimization
-from typing import List, Tuple, Dict
+from ConfigSpace import ConfigurationSpace
 from surrogate_model import SurrogateModel
 import argparse
 import matplotlib.pyplot as plt
@@ -23,31 +20,21 @@ def parse_args():
     return parser.parse_args()
 
 def successive_halving(args, B=100000, arms=1000):
-    config_path = args.config_space_file
-    
-    # dataset = pd.read_csv(dataset_path)
     dataset = get_dataframes()[args.dataset]
+    config_space = ConfigurationSpace.from_json(args.config_space_file)
     
-    # Read the configuration space definition (JSON format assumed for ConfigSpace)
-    config_space= ConfigurationSpace.from_json(config_path)
-
-    # Train the surrogate model
     surrogate_model = SurrogateModel(config_space)
     surrogate_model.fit(dataset)
     
-    B, arms = args.budget, arms
     S = [dict(conf) for conf in config_space.sample_configuration(arms)]
-
     halving_steps = math.ceil(math.log2(arms))
     bandit_performance = {i: [] for i in range(len(S))}
-    # predictions_times = [0] * halving_steps
 
     for i in range(halving_steps):
         budget = B / (len(S) * halving_steps)
         for bandit in S:
             bandit["anchor_size"] = budget
             bandit["score"] = surrogate_model.predict(bandit)
-            # predictions_times[i] = predictions_times[i] + 1
         
         for idx, bandit in enumerate(S):
             bandit_performance[idx].append(bandit["score"])
@@ -55,7 +42,6 @@ def successive_halving(args, B=100000, arms=1000):
         S.sort(key=lambda x: x["score"])
         S = S[:math.ceil(len(S) / 2)]
 
-    # Plot the best performing bandit
     best_bandit_id = min(bandit_performance, key=lambda k: bandit_performance[k][-1])
     best_performance = min(bandit_performance[best_bandit_id])
 
@@ -72,43 +58,6 @@ def main(args):
     print(run1)
     run2 = successive_halving(args, B=100000, arms=4000)
     run3 = successive_halving(args, B=100000, arms=8000)
-    # File paths for dataset and config space
-    # dataset_path = args.configurations_performance_file
-    # config_path = args.config_space_file
-    
-    # # dataset = pd.read_csv(dataset_path)
-    # dataset = get_dataframes()[args.dataset]
-    
-    # # Read the configuration space definition (JSON format assumed for ConfigSpace)
-    # config_space= ConfigurationSpace.from_json(config_path)
-
-    # # Train the surrogate model
-    # surrogate_model = SurrogateModel(config_space)
-    # surrogate_model.fit(dataset)
-    
-    # B, arms = 100000, 1000
-    # S = [dict(conf) for conf in config_space.sample_configuration(arms)]
-
-    # halving_steps = math.ceil(math.log2(arms))
-    # bandit_performance = {i: [] for i in range(len(S))}
-    # # predictions_times = [0] * halving_steps
-
-    # for i in range(halving_steps):
-    #     budget = B / (len(S) * halving_steps)
-    #     for bandit in S:
-    #         bandit["anchor_size"] = budget
-    #         bandit["score"] = surrogate_model.predict(bandit)
-    #         # predictions_times[i] = predictions_times[i] + 1
-        
-    #     for idx, bandit in enumerate(S):
-    #         bandit_performance[idx].append(bandit["score"])
-        
-    #     S.sort(key=lambda x: x["score"])
-    #     S = S[:math.ceil(len(S) / 2)]
-
-    # # Plot the best performing bandit
-    # best_bandit_id = min(bandit_performance, key=lambda k: bandit_performance[k][-1])
-    # best_performance = min(bandit_performance[best_bandit_id])
     
     # Plot the performance of the best performing bandit for both runs
     plt.plot(range(len(run1['best_performance_array'])), run1['best_performance_array'], marker='o', label='Best configuration out of 1000, run 1', color='orange', alpha=0.3)
@@ -128,17 +77,6 @@ def main(args):
     # plt.show()
     save_path = f'./plots/SUCCESSIVE_HALVING_PERFORMANCE_{args.dataset.upper()}.png'
     plt.savefig(save_path)
-
-    # plot the performance of the best performing bandit over predictions_times
-    # plt.plot(predictions_times, bandit_performance[best_bandit_id], marker='o', label=f'Bandit {best_bandit_id}', color='red')
-    # plt.xlabel('Number of Predictions')
-    # plt.ylabel('Score')
-    # plt.title('Performance of Best Configuration in Successive Halving on LCDB')
-    # plt.grid(True)
-    # plt.legend()
-    # # plt.show()
-    # plt.savefig('successive_halving_performance_LCDB_over_predictions_times.png')
-
 
 if __name__ == "__main__":
     main(parse_args())
