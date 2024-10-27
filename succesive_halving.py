@@ -19,7 +19,7 @@ def parse_args():
 
     return parser.parse_args()
 
-def successive_halving(args, B=100000, arms=1000):
+def successive_halving(args, budget=100000, arms=1000):
     dataset = get_dataframes()[args.dataset]
     config_space = ConfigurationSpace.from_json(args.config_space_file)
     
@@ -31,16 +31,13 @@ def successive_halving(args, B=100000, arms=1000):
     bandit_performance = {i: [] for i in range(len(S))}
 
     for i in range(halving_steps):
-        budget = B / (len(S) * halving_steps)
-        for bandit in S:
+        budget /= (len(S) * halving_steps)
+        for idx, bandit in enumerate(S):
             bandit["anchor_size"] = budget
             bandit["score"] = surrogate_model.predict(bandit)
-        
-        for idx, bandit in enumerate(S):
             bandit_performance[idx].append(bandit["score"])
         
-        S.sort(key=lambda x: x["score"])
-        S = S[:math.ceil(len(S) / 2)]
+        S = sorted(S, key=lambda x: x["score"])[:math.ceil(len(S) / 2)]
 
     best_bandit_id = min(bandit_performance, key=lambda k: bandit_performance[k][-1])
     best_performance = min(bandit_performance[best_bandit_id])
@@ -54,10 +51,10 @@ def successive_halving(args, B=100000, arms=1000):
 
 # Main function to run the steps
 def main(args):
-    run1 = successive_halving(args, B=100000, arms=1000)
+    run1 = successive_halving(args, budget=100000, arms=1000)
     print(run1)
-    run2 = successive_halving(args, B=100000, arms=4000)
-    run3 = successive_halving(args, B=100000, arms=8000)
+    run2 = successive_halving(args, budget=100000, arms=4000)
+    run3 = successive_halving(args, budget=100000, arms=8000)
     
     # Plot the performance of the best performing bandit for both runs
     plt.plot(range(len(run1['best_performance_array'])), run1['best_performance_array'], marker='o', label='Best configuration out of 1000, run 1', color='orange', alpha=0.3)

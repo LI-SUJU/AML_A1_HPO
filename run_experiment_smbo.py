@@ -22,7 +22,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def train_smbo(args, max_anchor, total_budget):
+def run(args, max_anchor, iteration):
     config_space = ConfigSpace.ConfigurationSpace.from_json(args.config_space_file)
     df = get_dataframes()[args.dataset]
     
@@ -42,7 +42,7 @@ def train_smbo(args, max_anchor, total_budget):
     
     spearman_internal, pval_internal, spearman_external, pval_external = [], [], [], []
     
-    for _ in range(total_budget):
+    for _ in range(iteration):
         smbo.fit_model()
         new_config = smbo.select_configuration()
         performance = surrogate.predict(new_config)
@@ -56,10 +56,10 @@ def train_smbo(args, max_anchor, total_budget):
     return smbo.result_performance, spearman_internal, pval_internal, spearman_external, pval_external
     
 
-def plotting(total_budget, all_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external):
+def plotting(iteration, all_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external):
     
     plt.figure(figsize=(6, 6))
-    plt.plot(range(total_budget), all_performances, color='red', label='Best found configuration')
+    plt.plot(range(iteration), all_performances, color='red', label='Best found configuration')
     min_performance = min(all_performances)
     min_budget = all_performances.index(min_performance)
     plt.axhline(y=min_performance, color='black', linestyle='--', label=f'Best performance: {min_performance:.6f}')
@@ -77,8 +77,8 @@ def plotting(total_budget, all_performances, spearman_corr_internal, pvalue_inte
     plt.savefig(f'./plots/smbo_performance_{args.dataset.upper()}.png')
 
     plt.figure(figsize=(6, 6))
-    plt.plot(range(total_budget), spearman_corr_internal, color='blue', label='Internal Model Spearman Correlation')
-    plt.plot(range(total_budget), spearman_corr_external, color='green', label='External Model Spearman Correlation')
+    plt.plot(range(iteration), spearman_corr_internal, color='blue', label='Internal Model Spearman Correlation')
+    plt.plot(range(iteration), spearman_corr_external, color='green', label='External Model Spearman Correlation')
     plt.xlabel('Iteration')
     plt.ylabel('Spearman Correlation')
     plt.title(f'Spearman Correlation of Internal and External Models on {args.dataset.upper()}')
@@ -88,8 +88,8 @@ def plotting(total_budget, all_performances, spearman_corr_internal, pvalue_inte
     plt.savefig(f'./plots/spearman_correlation_{args.dataset.upper()}.png')
 
     plt.figure(figsize=(6, 6))
-    plt.plot(range(total_budget), pvalue_internal, color='blue', label='Internal Model p-value')
-    plt.plot(range(total_budget), pvalue_external, color='green', label='External Model p-value')
+    plt.plot(range(iteration), pvalue_internal, color='blue', label='Internal Model p-value')
+    plt.plot(range(iteration), pvalue_external, color='green', label='External Model p-value')
     plt.xlabel('Iteration')
     plt.ylabel('p-value')
     plt.title(f'p-value of Internal and External Models on {args.dataset.upper()}')
@@ -106,10 +106,10 @@ if __name__ == "__main__":
     
     # Define the maximum anchor size and total budget for the experiment
     max_anchor = 16000
-    total_budget = 200
+    iteration = 200
     
     # Train the SMBO model and get the results
-    result_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external = train_smbo(args, max_anchor=max_anchor, total_budget=total_budget)
+    result_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external = run(args, max_anchor=max_anchor, iteration=iteration)
     
     # Plot the results
-    plotting(total_budget, result_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external)
+    plotting(iteration, result_performances, spearman_corr_internal, pvalue_internal, spearman_corr_external, pvalue_external)
